@@ -139,25 +139,28 @@ function renderMessage(container, data, isSelf) {
   meta.appendChild(timeSpan);
   bubble.appendChild(meta);
 
-  // 2. Message Body
+  // 2. Message Body (Default: Monospace Ciphertext)
   const body = document.createElement('p');
   body.className = 'msg-body';
-  body.textContent = '🔒 Encrypted...';
+  body.style.fontFamily = 'var(--font-mono)';
+  body.style.color = 'var(--color-accent)';
+  body.textContent = data.ciphertext;
   bubble.appendChild(body);
 
   // Cache decrypted plaintext
   let plaintextCached = null;
+  let hasAnimatedReveal = false;
 
-  // 3. E2EE Interactive Controls
+  // 3. E2EE Interactive Controls (Default: Ciphertext Tab Active)
   const controls = document.createElement('div');
   controls.className = 'msg-controls';
 
   const tabPlain = document.createElement('button');
-  tabPlain.className = 'msg-tab active';
+  tabPlain.className = 'msg-tab';
   tabPlain.textContent = 'Plaintext';
 
   const tabCipher = document.createElement('button');
-  tabCipher.className = 'msg-tab';
+  tabCipher.className = 'msg-tab active';
   tabCipher.textContent = 'Ciphertext';
 
   const btnEnvelope = document.createElement('button');
@@ -190,24 +193,31 @@ function renderMessage(container, data, isSelf) {
   `;
   bubble.appendChild(envelopeDrawer);
 
-  // Perform Decryption & Animation
+  // Perform Decryption in the background (no auto-reveal)
   decryptText({ ciphertext_b64: data.ciphertext, iv_b64: data.iv, tag_b64: data.tag })
     .then(pt => {
       plaintextCached = pt;
-      
-      // Automatic hacker unscrambling effect on receipt
-      if (tabPlain.classList.contains('active')) {
-        matrixDecryptAnimate(body, plaintextCached);
-      }
     });
 
   // Tab Listeners
   tabPlain.addEventListener('click', () => {
+    if (tabPlain.classList.contains('active')) return;
+    
     tabPlain.classList.add('active');
     tabCipher.classList.remove('active');
     body.style.fontFamily = 'var(--font-body)';
     body.style.color = '';
-    body.textContent = plaintextCached || '[decryption failed]';
+    
+    if (plaintextCached) {
+      if (!hasAnimatedReveal) {
+        matrixDecryptAnimate(body, plaintextCached);
+        hasAnimatedReveal = true;
+      } else {
+        body.textContent = plaintextCached;
+      }
+    } else {
+      body.textContent = '[decryption failed]';
+    }
   });
 
   tabCipher.addEventListener('click', () => {
