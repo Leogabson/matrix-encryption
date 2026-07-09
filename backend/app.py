@@ -81,13 +81,12 @@ def create_app() -> Flask:
     return app, socketio
 
 
-# ---------------------------------------------------------------------------
-# Entry-point
-# ---------------------------------------------------------------------------
+# Instantiate globally for WSGI/Serverless deployment engines (like Vercel)
+app, socketio = create_app()
 
 if __name__ == "__main__":
-    app, socketio = create_app()
     port = int(os.getenv("PORT", 5000))
     print(f"[OK] Server running at  http://127.0.0.1:{port}")
     print(f"[OK] Hello-world check: http://127.0.0.1:{port}/api/hello")
     socketio.run(app, host="0.0.0.0", port=port, debug=True)
+
