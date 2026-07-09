@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cipher Lab — Matrix Encryption</title>
+  <meta name="description" content="Interactive demo for AES-GCM and Hill Cipher encryption and decryption." />
+  <!-- Cryptographer's Desk fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/style.css" />
+  <style>
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Page header ── */
+    .page-header { margin-bottom: 36px; }
+    .page-title  { margin-bottom: 6px; }
+    .page-subtitle {
+      color: var(--color-text-inv-muted);
+      font-size: 0.9rem;
+      font-family: var(--font-body);
+    }
+
+    /* ── Cipher section ── */
+    .cipher-section { margin-bottom: 52px; }
+
+    .section-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    /* Icon badge — no gradients, just Brass Key on dark */
+    .section-icon {
+      width: 38px; height: 38px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid rgba(184,134,59,0.3);
+      background: rgba(184,134,59,0.08);
+      margin-top: 2px;
+    }
+    .section-icon svg { width: 20px; height: 20px; }
+
+    /* ── Card grid ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .panel { padding: 24px; }
+
+    .panel h3 {
+      margin-bottom: 18px;
+      font-size: 0.88rem;
+      font-family: var(--font-body);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    /* ── Result box (ciphertext output) ── */
+    .result-box {
+      margin-top: 16px;
+      background: rgba(20,24,29,0.07);
+      border: 1px solid rgba(42,49,56,0.4);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .result-row { display: flex; flex-direction: column; gap: 4px; }
+
+    .result-row label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      font-family: var(--font-body);
+    }
+
+    /* MONOSPACE for all ciphertext / base64 / matrix values */
+    .result-value {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--color-accent);
+      word-break: break-all;
+      background: rgba(184,134,59,0.06);
+      padding: 7px 9px;
+      border-radius: 4px;
+      border: 1px solid rgba(184,134,59,0.18);
+      cursor: text;
+      user-select: all;
+      line-height: 1.5;
+    }
+
+    .copy-btn {
+      align-self: flex-end;
+      font-size: 0.7rem;
+      padding: 3px 9px;
+    }
+
+    /* ── Hill cipher: breakable-cipher annotation ── */
+    .cipher-note {
+      border-left: 3px solid var(--color-danger);
+      padding: 8px 12px;
+      font-size: 0.79rem;
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      background: rgba(163,59,50,0.05);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      margin-bottom: 18px;
+      line-height: 1.55;
+    }
+    .cipher-note strong { color: var(--color-danger); font-weight: 600; }
+
+    /* ── Hint text ── */
+    .hint {
+      font-size: 0.77rem;
+      color: var(--color-text-muted);
+      line-height: 1.5;
+      margin-top: 4px;
+      font-family: var(--font-body);
+    }
+
+    /* MONOSPACE key-matrix textarea specifically */
+    #hill-matrix { font-family: var(--font-mono); font-size: 0.82rem; }
+
+    /* ── Horizontal divider ── */
+    .divider-h {
+      height: 1px;
+      background: var(--color-line);
+      margin: 32px 0;
+    }
+
+    /* ── Form stack spacing ── */
+    .form-stack { display: flex; flex-direction: column; gap: 14px; }
+
+    @media (max-width: 700px) {
+      .card-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="logo-icon">
+        <svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="32" cy="32" r="30" stroke="#B8863B" stroke-width="2.5"/>
+          <circle cx="32" cy="32" r="20" stroke="#B8863B" stroke-width="1.8"/>
+          <circle cx="32" cy="32" r="4"  fill="#B8863B"/>
+          <g stroke="#B8863B" stroke-width="1.2" opacity="0.65">
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(0    32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(45   32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(90   32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(135  32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(180  32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(225  32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(270  32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(315  32 32)"/>
+          </g>
+        </svg>
+      </div>
+      Matrix Encryption
+    </div>
+    <div class="navbar-links">
+      <a href="/chat.html"  class="btn btn-ghost" style="padding:6px 14px;font-size:0.82rem;">Chat</a>
+      <a href="/login.html" class="btn btn-ghost" style="padding:6px 14px;font-size:0.82rem;">Sign In</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="page-header">
+      <h1 class="page-title">Cipher Lab</h1>
+      <p class="page-subtitle">Interactively encrypt &amp; decrypt with AES-GCM and the Hill Cipher.</p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!--  AES-GCM                                      -->
+    <!-- ══════════════════════════════════════════════ -->
+    <section class="cipher-section" id="aes-section">
+      <div class="section-header">
+        <!-- Shield icon in Brass Key -->
+        <div class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#B8863B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"/>
+          </svg>
+        </div>
+        <div>
+          <h2>AES-256-GCM</h2>
+          <p class="page-subtitle">Authenticated encryption. 256-bit key, 96-bit nonce, 128-bit auth tag.</p>
+        </div>
+      </div>
+
+      <div class="card-grid">
+
+        <!-- Encrypt -->
+        <div class="card panel">
+          <h3>&#x25BC; Encrypt</h3>
+          <div class="form-stack">
+            <div class="form-group">
+              <label for="aes-plaintext">Plaintext</label>
+              <textarea id="aes-plaintext" class="input" rows="3" placeholder="Hello, World!"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="aes-key">Key (base64, optional)</label>
+              <input id="aes-key" class="input mono" type="text" placeholder="Leave blank to auto-generate" />
+            </div>
+            <button id="aes-encrypt-btn" class="btn btn-primary">Encrypt</button>
+          </div>
+
+          <div id="aes-result-box" class="result-box" hidden>
+            <div class="result-row">
+              <label>Ciphertext (base64)</label>
+              <div id="aes-result-ct" class="result-value"></div>
+              <button id="copy-ct" class="btn btn-ghost copy-btn">Copy</button>
+            </div>
+            <div class="result-row">
+              <label>IV / Nonce (base64)</label>
+              <div id="aes-result-iv" class="result-value"></div>
+              <button id="copy-iv" class="btn btn-ghost copy-btn">Copy</button>
+            </div>
+            <div class="result-row">
+              <label>Auth Tag (base64)</label>
+              <div id="aes-result-tag" class="result-value"></div>
+              <button id="copy-tag" class="btn btn-ghost copy-btn">Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decrypt -->
+        <div class="card panel">
+          <h3>&#x25B2; Decrypt</h3>
+          <div class="form-stack">
+            <div class="form-group">
+              <label for="aes-dec-ct">Ciphertext (base64)</label>
+              <input id="aes-dec-ct" class="input mono" type="text" placeholder="Paste ciphertext…" />
+            </div>
+            <div class="form-group">
+              <label for="aes-dec-iv">IV / Nonce (base64)</label>
+              <input id="aes-dec-iv" class="input mono" type="text" placeholder="Paste IV…" />
+            </div>
+            <div class="form-group">
+              <label for="aes-dec-tag">Auth Tag (base64)</label>
+              <input id="aes-dec-tag" class="input mono" type="text" placeholder="Paste tag…" />
+            </div>
+            <p class="hint">Key is read from the Encrypt panel above.</p>
+            <button id="aes-decrypt-btn" class="btn btn-primary">Decrypt</button>
+          </div>
+
+          <div id="aes-dec-result-box" class="result-box" hidden>
+            <div class="result-row">
+              <label>Plaintext</label>
+              <div id="aes-dec-result" class="result-value"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /card-grid -->
+    </section>
+
+    <div class="divider-h"></div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!--  Hill Cipher                                  -->
+    <!-- ══════════════════════════════════════════════ -->
+    <section class="cipher-section" id="hill-section">
+      <div class="section-header">
+        <!-- Matrix/grid icon -->
+        <div class="section-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#B8863B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <div>
+          <h2>Hill Cipher</h2>
+          <p class="page-subtitle">Matrix-based polygraphic substitution over A–Z (mod 26).</p>
+        </div>
+      </div>
+
+      <!-- Breakable-cipher margin note -->
+      <div class="cipher-note">
+        <strong>Note:</strong> The Hill cipher is a <em>classical</em> cipher and is
+        cryptographically weak — it is vulnerable to known-plaintext attack with as few as
+        n² letter pairs. Use AES-GCM for any security-sensitive application.
+      </div>
+
+      <!-- Key matrix input -->
+      <div class="card panel" style="margin-bottom:20px;">
+        <div class="form-group">
+          <label for="hill-matrix">Key Matrix — JSON or rows separated by <code style="font-family:var(--font-mono);font-size:0.9em;">/</code></label>
+          <textarea id="hill-matrix" class="input" rows="3"
+            placeholder="[[6,24,1],[13,16,10],[20,17,15]]  or  6 24 1 / 13 16 10 / 20 17 15"></textarea>
+          <p class="hint">Must be square and invertible mod 26. Numbers must align — use monospace to verify columns.</p>
+        </div>
+      </div>
+
+      <div class="card-grid">
+
+        <!-- Encrypt -->
+        <div class="card panel">
+          <h3>&#x25BC; Encrypt</h3>
+          <div class="form-stack">
+            <div class="form-group">
+              <label for="hill-plaintext">Plaintext (A–Z only)</label>
+              <input id="hill-plaintext" class="input mono" type="text" placeholder="ACT" />
+            </div>
+            <button id="hill-encrypt-btn" class="btn btn-primary">Encrypt</button>
+          </div>
+
+          <div id="hill-result-box" class="result-box" hidden>
+            <div class="result-row">
+              <label>Ciphertext</label>
+              <div id="hill-result" class="result-value"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decrypt -->
+        <div class="card panel">
+          <h3>&#x25B2; Decrypt</h3>
+          <div class="form-stack">
+            <div class="form-group">
+              <label for="hill-ciphertext">Ciphertext (A–Z only)</label>
+              <input id="hill-ciphertext" class="input mono" type="text" placeholder="POH" />
+            </div>
+            <button id="hill-decrypt-btn" class="btn btn-primary">Decrypt</button>
+          </div>
+
+          <div id="hill-dec-result-box" class="result-box" hidden>
+            <div class="result-row">
+              <label>Plaintext</label>
+              <div id="hill-dec-result" class="result-value"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /card-grid -->
+    </section>
+  </main>
+
+  <div id="toast-container"></div>
+  <script src="/assets/cipherlab.js"></script>
+</body>
+</html>

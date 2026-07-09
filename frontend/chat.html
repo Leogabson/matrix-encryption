@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Encrypted Chat — Matrix Encryption</title>
+  <meta name="description" content="Real-time AES-GCM encrypted chat powered by Socket.IO." />
+  <!-- Cryptographer's Desk fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/style.css" />
+  <!-- Socket.IO v4 client from CDN -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <style>
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* ── Layout ── */
+    .chat-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar (dark, like the navbar) ── */
+    .sidebar {
+      background: #1A1F26;
+      border-right: 1px solid var(--color-line);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .sidebar h3 {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-text-inv-muted);
+      font-family: var(--font-body);
+      font-weight: 600;
+    }
+
+    .sidebar-section { display: flex; flex-direction: column; gap: 8px; }
+
+    /* AES key display — monospace, brass tint */
+    .key-display {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      color: var(--color-accent);
+      background: rgba(184,134,59,0.08);
+      border: 1px solid rgba(184,134,59,0.22);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      word-break: break-all;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .key-display:hover { background: rgba(184,134,59,0.14); }
+
+    .sidebar-note {
+      font-size: 0.72rem;
+      color: var(--color-text-inv-muted);
+      line-height: 1.55;
+      font-family: var(--font-body);
+    }
+
+    /* ── Chat main area (dark bg) ── */
+    .chat-main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--color-bg);
+    }
+
+    .chat-header {
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--color-line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1A1F26;
+      flex-shrink: 0;
+    }
+
+    .chat-header strong {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--color-text-inv);
+    }
+
+    /* AES-GCM secured badge */
+    .secured-badge {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      color: var(--color-success);
+      border: 1px solid rgba(110,139,106,0.35);
+      background: rgba(110,139,106,0.1);
+      padding: 2px 8px;
+      border-radius: 99px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Message list ── */
+    #msg-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg-row { display: flex; }
+    .msg-row.self  { justify-content: flex-end; }
+    .msg-row.other { justify-content: flex-start; }
+
+    .msg-bubble {
+      max-width: 68%;
+      padding: 10px 14px;
+      border-radius: 7px;
+      position: relative;
+    }
+
+    /* Own messages: warm paper look */
+    .msg-row.self .msg-bubble {
+      background: var(--color-surface);
+      border: 1px solid rgba(184,134,59,0.3);
+      border-bottom-right-radius: 2px;
+      color: var(--color-text);
+    }
+
+    /* Others: slightly lighter dark */
+    .msg-row.other .msg-bubble {
+      background: #1E2328;
+      border: 1px solid var(--color-line);
+      border-bottom-left-radius: 2px;
+      color: var(--color-text-inv);
+    }
+
+    .msg-meta {
+      display: block;
+      font-size: 0.65rem;
+      color: var(--color-text-muted);
+      margin-bottom: 5px;
+      font-family: var(--font-mono);
+    }
+    .msg-row.other .msg-meta { color: var(--color-text-inv-muted); }
+
+    .msg-body {
+      font-size: 0.9rem;
+      line-height: 1.55;
+      word-break: break-word;
+      font-family: var(--font-body);
+    }
+
+    /* ── Input bar ── */
+    .chat-input-bar {
+      padding: 13px 20px;
+      border-top: 1px solid var(--color-line);
+      background: #1A1F26;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    /* Override .input for dark background */
+    .chat-input-bar .input {
+      flex: 1;
+      resize: none;
+      min-height: 44px;
+      max-height: 140px;
+      background: rgba(255,255,255,0.05);
+      border-color: var(--color-line);
+      color: var(--color-text-inv);
+    }
+    .chat-input-bar .input::placeholder { color: var(--color-text-inv-muted); }
+    .chat-input-bar .input:focus { border-color: var(--color-accent); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .chat-layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <!-- Small cipher-wheel mark -->
+      <div class="logo-icon">
+        <svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="32" cy="32" r="30" stroke="#B8863B" stroke-width="2.5"/>
+          <circle cx="32" cy="32" r="20" stroke="#B8863B" stroke-width="1.8"/>
+          <circle cx="32" cy="32" r="4"  fill="#B8863B"/>
+          <g stroke="#B8863B" stroke-width="1.2" opacity="0.65">
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(0    32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(45   32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(90   32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(135  32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(180  32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(225  32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(270  32 32)"/>
+            <line x1="32" y1="2" x2="32" y2="7" transform="rotate(315  32 32)"/>
+          </g>
+        </svg>
+      </div>
+      Matrix Encryption
+    </div>
+    <div class="navbar-links">
+      <span id="socket-status" class="badge badge-red">● Connecting…</span>
+      <a href="/cipher-lab.html" class="btn btn-ghost" style="padding:6px 14px;font-size:0.82rem;">Cipher Lab</a>
+      <button class="btn btn-ghost" id="logout-btn" style="padding:6px 14px;font-size:0.82rem;">Logout</button>
+    </div>
+  </nav>
+
+  <!-- Layout -->
+  <div class="chat-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <h3>Session Key · AES-256</h3>
+        <div class="key-display" id="key-display" title="Click to copy" onclick="copyKey()">
+          Loading…
+        </div>
+        <span class="sidebar-note">Click to copy · Share out-of-band only</span>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Connection</h3>
+        <div style="font-size:0.75rem; color:var(--color-text-inv-muted); font-family:var(--font-mono);">
+          Transport: <span id="transport-type">—</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Security Note</h3>
+        <p class="sidebar-note">
+          All messages are encrypted in your browser before transmission.
+          The server stores only AES-GCM ciphertext and cannot read plaintext.
+        </p>
+      </div>
+    </aside>
+
+    <!-- Chat main -->
+    <div class="chat-main">
+      <div class="chat-header">
+        <div class="flex items-center gap-2">
+          <strong>Global Room</strong>
+        </div>
+        <span class="secured-badge">AES-GCM secured</span>
+      </div>
+
+      <div id="msg-list" role="log" aria-live="polite" aria-label="Chat messages">
+        <!-- messages rendered by chat.js -->
+      </div>
+
+      <div class="chat-input-bar">
+        <textarea
+          id="msg-input"
+          class="input"
+          placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+          rows="1"
+          aria-label="Message input"
+        ></textarea>
+        <button id="send-btn" class="btn btn-primary" aria-label="Send message">Send ↑</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script>
+    // Show truncated AES key in sidebar
+    const keyEl  = document.getElementById('key-display');
+    const stored = sessionStorage.getItem('aes_key') || '';
+    keyEl.textContent = stored ? stored.slice(0, 20) + '…' : 'No key loaded';
+
+    function copyKey() {
+      const k = sessionStorage.getItem('aes_key') || '';
+      if (!k) return;
+      navigator.clipboard.writeText(k).then(() => alert('AES key copied!'));
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      sessionStorage.clear();
+      window.location.href = '/login.html';
+    });
+
+    // Transport info populated by chat.js after socket connects
+    window.__updateTransport = (t) => {
+      const el = document.getElementById('transport-type');
+      if (el) el.textContent = t;
+    };
+  </script>
+
+  <script src="/assets/chat.js"></script>
+</body>
+</html>

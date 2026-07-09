@@ -1,0 +1,322 @@
+/* =========================================================
+   Matrix Encryption — "Cryptographer's Desk" Design System
+   ========================================================= */
+
+/* ── Google Fonts are loaded via <link> in each HTML page ── */
+
+/* ── Design tokens ────────────────────────────────────────── */
+:root {
+  /* Palette */
+  --color-bg:           #14181D; /* Carbon Ink */
+  --color-surface:      #EDE6D6; /* Aged Paper */
+  --color-accent:       #B8863B; /* Brass Key */
+  --color-accent-hover: #CC9A4C; /* Lighter Brass */
+  --color-line:         #2A3138; /* Graphite Line */
+  --color-danger:       #A33B32; /* Grease Red */
+  --color-success:      #6E8B6A; /* Cipher Sage */
+
+  /* Text */
+  --color-text:         #1A1A14; /* near-black on surface */
+  --color-text-muted:   #7A6E5A; /* warm mid-tone on paper */
+  --color-text-inv:     #EDE6D6; /* light text on dark bg */
+  --color-text-inv-muted: #8A9199;
+
+  /* Fonts */
+  --font-display: 'Fraunces', serif;
+  --font-body:    'Inter', sans-serif;
+  --font-mono:    'IBM Plex Mono', monospace;
+
+  /* Geometry */
+  --radius:    7px;
+  --radius-sm: 5px;
+  --transition: 0.18s ease;
+
+  /* Legacy aliases (used by old class names preserved in HTML) */
+  --surface:     var(--color-surface);
+  --surface-2:   #E4DCC8;
+  --border:      var(--color-line);
+  --accent:      var(--color-accent);
+  --accent-2:    var(--color-success);
+  --accent-glow: rgba(184,134,59,0.22);
+  --danger:      var(--color-danger);
+  --text:        var(--color-text-inv);
+  --text-muted:  var(--color-text-inv-muted);
+  --font-sans:   var(--font-body);
+}
+
+/* ── Reset ────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-text-inv);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Faint graph-paper grid on bg ───────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(42,49,56,0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42,49,56,0.55) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Typography ───────────────────────────────────────────── */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); letter-spacing: -0.02em; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1rem; font-family: var(--font-body); font-weight: 600; }
+
+a { color: var(--color-accent); text-decoration: none; }
+a:hover { text-decoration: underline; color: var(--color-accent-hover); }
+code, pre, .mono { font-family: var(--font-mono); }
+
+/* ── Card (Aged Paper surface) ───────────────────────────── */
+.card {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  position: relative;
+  z-index: 1;
+  /* Subtle paper grain via noise-ish box-shadow */
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 4px 24px rgba(0,0,0,0.45);
+}
+
+/* Ensure child text inherits paper-text colour */
+.card,
+.card h1, .card h2, .card h3,
+.card p, .card label,
+.card .form-group label,
+.card .text-muted,
+.card .hint {
+  color: var(--color-text);
+}
+.card .text-muted,
+.card .hint { color: var(--color-text-muted); }
+
+/* ── Primary button ───────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 22px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition), transform var(--transition);
+  letter-spacing: 0.01em;
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--color-accent);
+  color: #14181D;
+  border-color: var(--color-accent);
+}
+.btn-primary:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--color-line);
+  color: var(--color-text-inv-muted);
+}
+.btn-ghost:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Ghost on paper surface (inside cards) */
+.card .btn-ghost {
+  border-color: rgba(42,49,56,0.4);
+  color: var(--color-text-muted);
+}
+.card .btn-ghost:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ── Input ────────────────────────────────────────────────── */
+.input {
+  width: 100%;
+  background: rgba(20,24,29,0.06);
+  border: 1px solid rgba(42,49,56,0.55);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  padding: 10px 13px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(184,134,59,0.18);
+}
+.input::placeholder { color: var(--color-text-muted); }
+textarea.input { resize: vertical; min-height: 80px; }
+.input.mono { font-family: var(--font-mono); font-size: 0.8rem; }
+
+/* ── Form group ───────────────────────────────────────────── */
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-family: var(--font-body);
+}
+
+/* ── Badge ────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: var(--font-body);
+}
+.badge-accent  { background: rgba(184,134,59,0.15); color: var(--color-accent);   border: 1px solid rgba(184,134,59,0.3); }
+.badge-green   { background: rgba(110,139,106,0.15); color: var(--color-success);  border: 1px solid rgba(110,139,106,0.3); }
+.badge-red     { background: rgba(163,59,50,0.12);   color: var(--color-danger);   border: 1px solid rgba(163,59,50,0.25); }
+
+/* ── Navbar ───────────────────────────────────────────────── */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 58px;
+  background: rgba(20,24,29,0.92);
+  border-bottom: 1px solid var(--color-line);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-text-inv);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: -0.01em;
+}
+
+/* Cipher-wheel logo icon wrapper */
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.navbar-links { display: flex; gap: 8px; align-items: center; }
+
+/* ── Toast ────────────────────────────────────────────────── */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 9999;
+}
+.toast {
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  background: #1E2328;
+  border: 1px solid var(--color-line);
+  border-left: 3px solid var(--color-accent);
+  font-size: 0.85rem;
+  color: var(--color-text-inv);
+  font-family: var(--font-body);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+  animation: toastIn 0.25s ease forwards;
+  max-width: 320px;
+}
+.toast.success { border-left-color: var(--color-success); }
+.toast.error   { border-left-color: var(--color-danger);  }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Loading spinner ──────────────────────────────────────── */
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(20,24,29,0.2);
+  border-top-color: #14181D;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Utility ──────────────────────────────────────────────── */
+.flex        { display: flex; }
+.items-center{ align-items: center; }
+.gap-2       { gap: 8px; }
+.gap-4       { gap: 16px; }
+.mt-4        { margin-top: 16px; }
+.mt-6        { margin-top: 24px; }
+.w-full      { width: 100%; }
+.text-muted  { color: var(--color-text-inv-muted); font-size: 0.875rem; }
+.text-center { text-align: center; }
+.mono        { font-family: var(--font-mono); }
+.break-all   { word-break: break-all; }
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+
+/* ── Danger annotation (margin-note style) ───────────────── */
+.danger-note {
+  border-left: 3px solid var(--color-danger);
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  background: rgba(163,59,50,0.06);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-top: 8px;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .navbar { padding: 0 16px; }
+}

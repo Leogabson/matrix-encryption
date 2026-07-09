@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — Matrix Encryption</title>
+  <meta name="description" content="Sign in to the Matrix Encryption platform for secure, end-to-end encrypted messaging." />
+  <!-- Cryptographer's Desk fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/style.css" />
+  <style>
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      padding: 40px 36px;
+    }
+
+    /* ── Logo / cipher-wheel mark ── */
+    .logo-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 36px;
+      text-align: center;
+    }
+
+    .cipher-wheel-lg {
+      width: 64px;
+      height: 64px;
+      flex-shrink: 0;
+    }
+
+    .login-card h1 {
+      font-size: 1.6rem;
+      color: var(--color-text);
+    }
+    .login-card .subtitle {
+      color: var(--color-text-muted);
+      font-size: 0.85rem;
+      margin-top: 4px;
+      font-family: var(--font-body);
+    }
+
+    /* ── Tab switcher ── */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      background: rgba(42,49,56,0.12);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(42,49,56,0.25);
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 0.83rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--color-text-muted);
+      transition: var(--transition);
+      user-select: none;
+      font-family: var(--font-body);
+    }
+    .tab.active {
+      background: var(--color-accent);
+      color: #14181D;
+    }
+
+    /* ── Form stack ── */
+    .form-stack { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Error message ── */
+    #error-msg {
+      color: var(--color-danger);
+      font-size: 0.82rem;
+      text-align: center;
+      min-height: 1.2em;
+      font-family: var(--font-body);
+    }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--color-text-muted);
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-family: var(--font-body);
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(42,49,56,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="card login-card">
+
+      <!-- Cipher wheel + title -->
+      <div class="logo-wrap">
+        <!-- Alberti cipher-wheel SVG: two concentric rings with tick marks -->
+        <svg class="cipher-wheel-lg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <!-- Outer ring -->
+          <circle cx="32" cy="32" r="30" stroke="#B8863B" stroke-width="2"/>
+          <!-- Inner ring -->
+          <circle cx="32" cy="32" r="20" stroke="#B8863B" stroke-width="1.5"/>
+          <!-- Hub -->
+          <circle cx="32" cy="32" r="4" fill="#B8863B"/>
+          <!-- Outer tick marks (26 letters, every ~13.8°) -->
+          <g stroke="#B8863B" stroke-width="1" opacity="0.7">
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(0   32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(13.8 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(27.7 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(41.5 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(55.4 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(69.2 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(83.1 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(96.9 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(110.8 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(124.6 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(138.5 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(152.3 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(166.2 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(180   32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(193.8 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(207.7 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(221.5 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(235.4 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(249.2 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(263.1 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(276.9 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(290.8 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(304.6 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(318.5 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(332.3 32 32)"/>
+            <line x1="32" y1="2"  x2="32" y2="6"  transform="rotate(346.2 32 32)"/>
+          </g>
+          <!-- Inner tick marks (offset by half-step = 6.9°) -->
+          <g stroke="#B8863B" stroke-width="0.8" opacity="0.45">
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(6.9  32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(20.8 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(34.6 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(48.5 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(62.3 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(76.2 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(90   32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(103.8 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(117.7 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(131.5 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(145.4 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(159.2 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(173.1 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(186.9 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(200.8 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(214.6 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(228.5 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(242.3 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(256.2 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(270   32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(283.8 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(297.7 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(311.5 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(325.4 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(339.2 32 32)"/>
+            <line x1="32" y1="12" x2="32" y2="15" transform="rotate(353.1 32 32)"/>
+          </g>
+        </svg>
+
+        <div>
+          <h1>Matrix Encryption</h1>
+          <p class="subtitle">End-to-end encrypted chat &amp; cipher lab</p>
+        </div>
+      </div>
+
+      <!-- Tab switcher -->
+      <div class="tabs">
+        <div class="tab active" id="tab-login" onclick="switchTab('login')">Sign In</div>
+        <div class="tab"        id="tab-register" onclick="switchTab('register')">Register</div>
+      </div>
+
+      <form class="form-stack" id="auth-form" autocomplete="on" novalidate>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input id="username" class="input" type="text" placeholder="your_username"
+                 autocomplete="username" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" class="input" type="password" placeholder="••••••••"
+                 autocomplete="current-password" required />
+        </div>
+
+        <p id="error-msg"></p>
+
+        <button id="submit-btn" class="btn btn-primary w-full" type="submit">
+          Sign In
+        </button>
+      </form>
+
+      <div class="divider mt-4">or explore</div>
+
+      <div class="flex gap-2 mt-4">
+        <a href="/cipher-lab.html" class="btn btn-ghost w-full" style="font-size:0.82rem;">Cipher Lab</a>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script>
+    let mode = 'login'; // 'login' | 'register'
+
+    function switchTab(newMode) {
+      mode = newMode;
+      document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+      document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+      document.getElementById('submit-btn').textContent = mode === 'login' ? 'Sign In' : 'Create Account';
+      document.getElementById('password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+      document.getElementById('error-msg').textContent = '';
+    }
+
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const errEl    = document.getElementById('error-msg');
+      const btn      = document.getElementById('submit-btn');
+
+      if (!username || !password) {
+        errEl.textContent = 'Please fill in all fields.';
+        return;
+      }
+
+      btn.disabled     = true;
+      btn.innerHTML    = '<span class="spinner"></span>';
+      errEl.textContent = '';
+
+      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+
+      try {
+        const res  = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          errEl.textContent = data.error || 'Something went wrong.';
+          return;
+        }
+
+        // Store token + AES key for the session
+        sessionStorage.setItem('token',   data.token);
+        sessionStorage.setItem('user_id', data.user_id);
+        if (data.aes_key) sessionStorage.setItem('aes_key', data.aes_key);
+
+        window.location.href = '/chat.html';
+      } catch {
+        errEl.textContent = 'Network error – is the server running?';
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = mode === 'login' ? 'Sign In' : 'Create Account';
+      }
+    });
+  </script>
+</body>
+</html>
