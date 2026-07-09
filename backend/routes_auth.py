@@ -3,11 +3,22 @@ routes_auth.py – /api/auth/register and /api/auth/login endpoints.
 """
 from __future__ import annotations
 
-from flask import Blueprint, request, jsonify
+import hashlib
+import base64
+from flask import Blueprint, request, jsonify, current_app
 from models import db, User
 from auth import hash_password, verify_password, generate_token
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
+
+
+def _get_room_key() -> str:
+    """Derive a static 32-byte AES key from the server's SECRET_KEY.
+    All authenticated users on this server will share this key to talk in the Global Room.
+    """
+    secret = current_app.config["SECRET_KEY"].encode()
+    derived = hashlib.sha256(secret).digest()
+    return base64.b64encode(derived).decode()
 
 
 @auth_bp.route("/register", methods=["POST"])
@@ -35,7 +46,11 @@ def register():
     db.session.refresh(user)
 
     token = generate_token(user.id)
-    return jsonify({"token": token, "user_id": user.id}), 201
+    return jsonify({
+        "token": token,
+        "user_id": user.id,
+        "aes_key": _get_room_key()
+    }), 201
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -55,4 +70,9 @@ def login():
         return jsonify({"error": "Invalid username or password."}), 401
 
     token = generate_token(user.id)
-    return jsonify({"token": token, "user_id": user.id}), 200
+    return jsonify({
+        "token": token,
+        "user_id": user.id,
+        "aes_key": _get_room_key()
+    }), 200
+
