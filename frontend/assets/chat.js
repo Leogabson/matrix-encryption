@@ -266,17 +266,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     status.textContent  = '● Connected';
     status.className    = 'badge badge-green';
     toast('Socket.IO connected ✓', 'success');
+    if (window.__updateTransport) {
+      window.__updateTransport(socket.io.engine.transport.name);
+    }
+    socket.io.engine.on('upgrade', () => {
+      if (window.__updateTransport) {
+        window.__updateTransport(socket.io.engine.transport.name);
+      }
+    });
   });
 
   socket.on('disconnect', () => {
     status.textContent = '● Disconnected';
     status.className   = 'badge badge-red';
+    if (window.__updateTransport) {
+      window.__updateTransport('—');
+    }
   });
 
   socket.on('connect_error', (err) => {
     status.textContent = '● Error';
     status.className   = 'badge badge-red';
     toast(`Connection error: ${err.message}`, 'error');
+    if (window.__updateTransport) {
+      window.__updateTransport('—');
+    }
   });
 
   socket.on('new_message', (data) => {

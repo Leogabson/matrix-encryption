@@ -44,7 +44,7 @@ def create_app() -> Flask:
     socketio = SocketIO(
         app,
         cors_allowed_origins="*",
-        async_mode="eventlet",
+        async_mode="threading",
         logger=False,
         engineio_logger=False,
     )
@@ -88,5 +88,5 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     print(f"[OK] Server running at  http://127.0.0.1:{port}")
     print(f"[OK] Hello-world check: http://127.0.0.1:{port}/api/hello")
-    socketio.run(app, host="0.0.0.0", port=port, debug=True)
+    socketio.run(app, host="0.0.0.0", port=port, debug=True, allow_unsafe_werkzeug=True)
 

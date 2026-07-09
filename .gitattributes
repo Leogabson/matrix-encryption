@@ -1,1 +1,3 @@
 runtime.txt text eol=lf
+.python-version text eol=lf
+Procfile text eol=lf
