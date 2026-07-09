@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/style.css" />
+  <script src="/assets/boot.js" defer></script>
   <style>
     .login-wrap {
       min-height: 100vh;
@@ -23,6 +24,9 @@
       width: 100%;
       max-width: 420px;
       padding: 40px 36px;
+      opacity: 0;
+      transform: scale(0.98);
+      transition: opacity 0.4s ease, transform 0.4s ease;
     }
 
     /* ── Logo / cipher-wheel mark ── */
@@ -112,6 +116,34 @@
   </style>
 </head>
 <body>
+  <!-- Boot Screen Overlay -->
+  <div id="boot-overlay" class="boot-overlay">
+    <div class="scanlines"></div>
+    <canvas id="boot-canvas"></canvas>
+    <div class="boot-terminal">
+      <div id="boot-text" class="mono"></div>
+      <span class="terminal-cursor"></span>
+    </div>
+    <div class="skip-prompt">Click anywhere to skip</div>
+  </div>
+
+  <!-- Access Granted Overlay -->
+  <div id="granted-overlay" class="granted-overlay" style="display: none;">
+    <div class="scanlines"></div>
+    <div class="granted-silhouette-wrap">
+      <svg class="silhouette-svg silhouette-cyan" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 95 C15 75, 25 65, 30 55 C30 35, 35 10, 50 5 C65 10, 70 35, 70 55 C75 65, 85 75, 90 95 Z" />
+      </svg>
+      <svg class="silhouette-svg silhouette-red" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 95 C15 75, 25 65, 30 55 C30 35, 35 10, 50 5 C65 10, 70 35, 70 55 C75 65, 85 75, 90 95 Z" />
+      </svg>
+      <svg class="silhouette-svg silhouette-main" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 95 C15 75, 25 65, 30 55 C30 35, 35 10, 50 5 C65 10, 70 35, 70 55 C75 65, 85 75, 90 95 Z" />
+      </svg>
+      <div id="granted-stamp">ACCESS GRANTED</div>
+    </div>
+  </div>
+
   <div class="login-wrap">
     <div class="card login-card">
 
@@ -276,7 +308,13 @@
         sessionStorage.setItem('user_id', data.user_id);
         if (data.aes_key) sessionStorage.setItem('aes_key', data.aes_key);
 
-        window.location.href = '/chat.html';
+        if (window.triggerAccessGrantedReveal) {
+          window.triggerAccessGrantedReveal(() => {
+            window.location.href = '/chat.html';
+          });
+        } else {
+          window.location.href = '/chat.html';
+        }
       } catch {
         errEl.textContent = 'Network error – is the server running?';
       } finally {
