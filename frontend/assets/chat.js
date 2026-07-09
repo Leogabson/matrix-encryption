@@ -71,6 +71,37 @@ async function decryptText({ ciphertext_b64, iv_b64, tag_b64 }) {
   }
 }
 
+/* ── Matrix Hacker Decryption Animation ──────────────── */
+function matrixDecryptAnimate(element, targetText, duration = 1200) {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%/\\+=_';
+  const start = performance.now();
+  
+  function update(time) {
+    const elapsed = time - start;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    let resultText = '';
+    for (let i = 0; i < targetText.length; i++) {
+      if (targetText[i] === ' ' || targetText[i] === '\n') {
+        resultText += targetText[i];
+      } else if (Math.random() < progress) {
+        resultText += targetText[i];
+      } else {
+        resultText += chars[Math.floor(Math.random() * chars.length)];
+      }
+    }
+    
+    element.textContent = resultText;
+    
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    } else {
+      element.textContent = targetText;
+    }
+  }
+  requestAnimationFrame(update);
+}
+
 /* ── Toast helper ────────────────────────────────────── */
 function toast(msg, type = 'info') {
   let container = document.getElementById('toast-container');
@@ -86,31 +117,113 @@ function toast(msg, type = 'info') {
   setTimeout(() => t.remove(), 4000);
 }
 
-/* ── Render a message bubble ─────────────────────────── */
+/* ── Render E2EE Sophisticated Message Bubble ───────── */
 function renderMessage(container, data, isSelf) {
   const wrapper = document.createElement('div');
   wrapper.className = `msg-row ${isSelf ? 'self' : 'other'}`;
 
   const bubble = document.createElement('div');
   bubble.className = 'msg-bubble';
-  bubble.dataset.ciphertext = data.ciphertext;
-  bubble.dataset.iv         = data.iv;
-  bubble.dataset.tag        = data.tag;
 
-  const meta = document.createElement('span');
+  // 1. Metadata Header
+  const meta = document.createElement('div');
   meta.className = 'msg-meta';
-  meta.textContent = `uid:${data.user_id} · ${new Date(data.timestamp).toLocaleTimeString()}`;
+  
+  const senderSpan = document.createElement('span');
+  senderSpan.textContent = `User ID: ${data.user_id}`;
+  
+  const timeSpan = document.createElement('span');
+  timeSpan.textContent = new Date(data.timestamp).toLocaleTimeString();
+  
+  meta.appendChild(senderSpan);
+  meta.appendChild(timeSpan);
+  bubble.appendChild(meta);
 
+  // 2. Message Body
   const body = document.createElement('p');
   body.className = 'msg-body';
-  body.textContent = '🔒 Encrypted…';
-
-  // Decrypt asynchronously then update
-  decryptText({ ciphertext_b64: data.ciphertext, iv_b64: data.iv, tag_b64: data.tag })
-    .then(pt => { body.textContent = pt; });
-
-  bubble.appendChild(meta);
+  body.textContent = '🔒 Encrypted...';
   bubble.appendChild(body);
+
+  // Cache decrypted plaintext
+  let plaintextCached = null;
+
+  // 3. E2EE Interactive Controls
+  const controls = document.createElement('div');
+  controls.className = 'msg-controls';
+
+  const tabPlain = document.createElement('button');
+  tabPlain.className = 'msg-tab active';
+  tabPlain.textContent = 'Plaintext';
+
+  const tabCipher = document.createElement('button');
+  tabCipher.className = 'msg-tab';
+  tabCipher.textContent = 'Ciphertext';
+
+  const btnEnvelope = document.createElement('button');
+  btnEnvelope.className = 'msg-tab';
+  btnEnvelope.textContent = 'Cryptographic Envelope';
+
+  controls.appendChild(tabPlain);
+  controls.appendChild(tabCipher);
+  controls.appendChild(btnEnvelope);
+  bubble.appendChild(controls);
+
+  // 4. Envelope Expandable Drawer
+  const envelopeDrawer = document.createElement('div');
+  envelopeDrawer.className = 'envelope-details';
+  envelopeDrawer.style.display = 'none';
+
+  envelopeDrawer.innerHTML = `
+    <div class="envelope-field">
+      <span>Initialization Vector (IV/Nonce)</span>
+      <span>${data.iv}</span>
+    </div>
+    <div class="envelope-field">
+      <span>Auth Tag</span>
+      <span>${data.tag}</span>
+    </div>
+    <div class="envelope-field">
+      <span>Raw Ciphertext</span>
+      <span>${data.ciphertext}</span>
+    </div>
+  `;
+  bubble.appendChild(envelopeDrawer);
+
+  // Perform Decryption & Animation
+  decryptText({ ciphertext_b64: data.ciphertext, iv_b64: data.iv, tag_b64: data.tag })
+    .then(pt => {
+      plaintextCached = pt;
+      
+      // Automatic hacker unscrambling effect on receipt
+      if (tabPlain.classList.contains('active')) {
+        matrixDecryptAnimate(body, plaintextCached);
+      }
+    });
+
+  // Tab Listeners
+  tabPlain.addEventListener('click', () => {
+    tabPlain.classList.add('active');
+    tabCipher.classList.remove('active');
+    body.style.fontFamily = 'var(--font-body)';
+    body.style.color = '';
+    body.textContent = plaintextCached || '[decryption failed]';
+  });
+
+  tabCipher.addEventListener('click', () => {
+    tabCipher.classList.add('active');
+    tabPlain.classList.remove('active');
+    body.style.fontFamily = 'var(--font-mono)';
+    body.style.color = 'var(--color-accent)';
+    body.textContent = data.ciphertext;
+  });
+
+  btnEnvelope.addEventListener('click', () => {
+    btnEnvelope.classList.toggle('active');
+    envelopeDrawer.style.display = envelopeDrawer.style.display === 'none' ? 'flex' : 'none';
+    container.scrollTop = container.scrollHeight;
+  });
+
   wrapper.appendChild(bubble);
   container.appendChild(wrapper);
   container.scrollTop = container.scrollHeight;
