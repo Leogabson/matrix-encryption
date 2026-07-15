@@ -14,9 +14,14 @@
     main {
       max-width: 920px;
       margin: 0 auto;
-      padding: 40px 24px 80px;
+      padding: 20px 16px 60px; /* Mobile-first layout padding */
       position: relative;
       z-index: 1;
+    }
+    @media (min-width: 600px) {
+      main {
+        padding: 40px 24px 80px; /* Desktop padding */
+      }
     }
 
     /* ── Page header ── */
@@ -50,11 +55,16 @@
     }
     .section-icon svg { width: 20px; height: 20px; }
 
-    /* ── Card grid ── */
+    /* ── Card grid (mobile-first stacked panels) ── */
     .card-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr; /* Stacked by default */
       gap: 20px;
+    }
+    @media (min-width: 700px) {
+      .card-grid {
+        grid-template-columns: 1fr 1fr; /* Side-by-side on desktop */
+      }
     }
 
     .panel { padding: 24px; }
@@ -113,7 +123,11 @@
     .copy-btn {
       align-self: flex-end;
       font-size: 0.7rem;
-      padding: 3px 9px;
+      padding: 6px 12px; /* Touch target pad */
+      min-height: var(--touch-target-size);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     /* ── Hill cipher: breakable-cipher annotation ── */
@@ -151,10 +165,6 @@
 
     /* ── Form stack spacing ── */
     .form-stack { display: flex; flex-direction: column; gap: 14px; }
-
-    @media (max-width: 700px) {
-      .card-grid { grid-template-columns: 1fr; }
-    }
   </style>
 </head>
 <body>
@@ -179,7 +189,7 @@
           </g>
         </svg>
       </div>
-      Matrix Encryption
+      <span class="navbar-brand-text">Matrix Encryption</span>
     </div>
     <div class="navbar-links">
       <a href="/chat.html"  class="btn btn-ghost" style="padding:6px 14px;font-size:0.82rem;">Chat</a>

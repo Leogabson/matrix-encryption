@@ -15,15 +15,31 @@
   <style>
     body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
+    /* ── Mobile-Only Utilities ── */
+    .mobile-only-btn {
+      display: inline-flex;
+    }
+    @media (min-width: 900px) {
+      .mobile-only-btn {
+        display: none !important;
+      }
+    }
+
     /* ── Layout ── */
     .chat-layout {
       flex: 1;
       display: grid;
-      grid-template-columns: 240px 1fr;
+      grid-template-columns: 1fr; /* Mobile-first: single column */
       overflow: hidden;
+      position: relative;
+    }
+    @media (min-width: 900px) {
+      .chat-layout {
+        grid-template-columns: var(--sidebar-width) 1fr;
+      }
     }
 
-    /* ── Sidebar (dark, like the navbar) ── */
+    /* ── Sidebar (dark overlay drawer on mobile) ── */
     .sidebar {
       background: #1A1F26;
       border-right: 1px solid var(--color-line);
@@ -32,6 +48,27 @@
       padding: 20px 16px;
       gap: 20px;
       overflow-y: auto;
+      /* Mobile-first: overlay slide-in drawer */
+      position: fixed;
+      left: -100%;
+      top: var(--header-height);
+      bottom: 0;
+      width: var(--sidebar-width);
+      z-index: 400;
+      box-shadow: 5px 0 20px rgba(0,0,0,0.5);
+      transition: left var(--transition);
+    }
+    .sidebar.open {
+      left: 0;
+    }
+    @media (min-width: 900px) {
+      .sidebar {
+        position: static;
+        display: flex;
+        width: auto;
+        box-shadow: none;
+        transition: none;
+      }
     }
 
     .sidebar h3 {
@@ -56,6 +93,9 @@
       padding: 8px 10px;
       word-break: break-all;
       cursor: pointer;
+      min-height: var(--touch-target-size); /* Minimum touch target height */
+      display: flex;
+      align-items: center;
       transition: background var(--transition);
     }
     .key-display:hover { background: rgba(184,134,59,0.14); }
@@ -73,16 +113,26 @@
       flex-direction: column;
       overflow: hidden;
       background: var(--color-bg);
+      position: relative;
     }
 
     .chat-header {
-      padding: 13px 20px;
+      padding: var(--spacing-sm) var(--spacing-md);
       border-bottom: 1px solid var(--color-line);
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column; /* Stacked layout on mobile-first */
+      gap: var(--spacing-sm);
       background: #1A1F26;
       flex-shrink: 0;
+      align-items: stretch;
+    }
+    @media (min-width: 600px) {
+      .chat-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 13px 20px;
+      }
     }
 
     .chat-header strong {
@@ -101,6 +151,7 @@
       padding: 2px 8px;
       border-radius: 99px;
       letter-spacing: 0.04em;
+      display: inline-block;
     }
 
     /* ── Message list ── */
@@ -118,13 +169,17 @@
     .msg-row.other { justify-content: flex-start; }
 
     .msg-bubble {
-      max-width: 68%;
+      max-width: 88%; /* Wide on mobile-first to preserve horizontal space */
       padding: 10px 14px;
       border-radius: 7px;
       position: relative;
     }
+    @media (min-width: 600px) {
+      .msg-bubble {
+        max-width: 68%;
+      }
+    }
 
-    /* Own messages: warm paper look */
     /* Own messages: warm paper look */
     .msg-row.self .msg-bubble {
       background: var(--color-surface);
@@ -151,6 +206,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap; /* Wrap labels gracefully */
+      gap: var(--spacing-xs);
       font-size: 0.65rem;
       color: var(--color-text-muted);
       font-family: var(--font-mono);
@@ -190,7 +247,7 @@
       cursor: pointer;
       font-family: var(--font-mono);
       font-size: 0.65rem;
-      padding: 2px 6px;
+      padding: 6px 8px; /* Safe padding for minimum target */
       border-radius: 3px;
       transition: all var(--transition);
     }
@@ -261,7 +318,7 @@
       cursor: pointer;
       font-family: var(--font-mono);
       font-size: 0.6rem;
-      padding: 1px 5px;
+      padding: 6px 8px; /* Safe padding for minimum target */
       border-radius: 3px;
       opacity: 0.7;
       transition: opacity var(--transition);
@@ -332,7 +389,7 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
-      padding: 7px 10px;
+      padding: 10px 12px; /* Touch target padding */
       border-radius: var(--radius-sm);
       border: 1px solid rgba(255,255,255,0.06);
       cursor: pointer;
@@ -341,6 +398,8 @@
       font-family: var(--font-body);
       transition: all var(--transition);
       background: transparent;
+      min-height: var(--touch-target-size); /* Minimum height target */
+      justify-content: center;
     }
     .session-item:hover {
       background: rgba(255,255,255,0.04);
@@ -362,14 +421,18 @@
       opacity: 0.6;
       font-family: var(--font-mono);
     }
+
     /* ── Input bar ── */
     .chat-input-bar {
-      padding: 13px 20px;
+      padding: 12px 16px calc(12px + var(--safe-area-bottom)); /* Add safe-area bottom bezel inset */
       border-top: 1px solid var(--color-line);
       background: #1A1F26;
       display: flex;
       gap: 10px;
-      align-items: flex-end;
+      align-items: center;
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
       flex-shrink: 0;
     }
 
@@ -377,7 +440,7 @@
     .chat-input-bar .input {
       flex: 1;
       resize: none;
-      min-height: 44px;
+      min-height: var(--touch-target-size);
       max-height: 140px;
       background: rgba(255,255,255,0.05);
       border-color: var(--color-line);
@@ -386,7 +449,6 @@
     .chat-input-bar .input::placeholder { color: var(--color-text-inv-muted); }
     .chat-input-bar .input:focus { border-color: var(--color-accent); }
 
-    /* ── Responsive ── */
     /* ── User-picker modal ── */
     .modal-backdrop {
       position: fixed;
@@ -405,15 +467,24 @@
     .modal-box {
       background: #1A1F26;
       border: 1px solid rgba(184,134,59,0.35);
-      border-radius: var(--radius);
-      width: min(440px, 92vw);
-      max-height: 80vh;
+      border-radius: 0; /* Full screen on mobile */
+      width: 100vw;
+      height: 100vh;
+      max-height: 100vh;
       display: flex;
       flex-direction: column;
       box-shadow: 0 24px 64px rgba(0,0,0,0.8);
       animation: slideUp 0.2s ease;
     }
     @keyframes slideUp { from { transform: translateY(18px); opacity:0; } to { transform: none; opacity:1; } }
+    @media (min-width: 600px) {
+      .modal-box {
+        width: min(var(--modal-width), 92vw);
+        height: auto;
+        max-height: 80vh;
+        border-radius: var(--radius);
+      }
+    }
 
     .modal-header {
       padding: 18px 20px 14px;
@@ -434,7 +505,7 @@
       font-size: 1.1rem;
       cursor: pointer;
       line-height: 1;
-      padding: 2px 6px;
+      padding: 10px 14px; /* Ensure >= 44px tap target */
       border-radius: 4px;
       transition: color var(--transition);
     }
@@ -462,11 +533,12 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 10px 12px;
+      padding: 12px 14px; /* Safe padding for minimum target */
       border-radius: var(--radius-sm);
       border: 1px solid rgba(255,255,255,0.05);
       cursor: pointer;
       transition: all var(--transition);
+      min-height: var(--touch-target-size); /* Minimum height target */
     }
     .user-row:hover {
       background: rgba(184,134,59,0.07);
@@ -542,18 +614,21 @@
     .chat-header-actions {
       display: flex;
       align-items: center;
+      flex-wrap: wrap; /* Wrap on narrow headers */
       gap: 8px;
     }
     .btn-header {
-      padding: 4px 10px;
+      padding: 8px 12px; /* Ensure tap target is easy to touch */
       font-size: 0.72rem;
       border-radius: var(--radius-sm);
+      min-height: var(--touch-target-size);
     }
     .btn-back {
       font-size: 0.72rem;
-      padding: 4px 10px;
+      padding: 8px 12px;
       color: var(--color-text-inv-muted);
       border-color: rgba(255,255,255,0.1);
+      min-height: var(--touch-target-size);
     }
     .btn-back:hover { color: var(--color-text-inv); }
 
@@ -589,13 +664,22 @@
     }
     .fp-grid {
       display: flex;
-      align-items: flex-start;
-      gap: 20px;
+      flex-direction: column; /* Mobile-first: stack columns */
+      align-items: stretch;
+      gap: 15px;
+    }
+    @media (min-width: 600px) {
+      .fp-grid {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 20px;
+      }
     }
     .fp-matrix-col {
       display: flex;
       flex-direction: column;
       gap: 6px;
+      flex: 1;
     }
     .fp-matrix-label {
       font-size: 0.6rem;
@@ -628,11 +712,17 @@
     .fp-sep {
       display: flex;
       align-items: center;
-      padding-top: 22px;
+      justify-content: center;
+      padding: 5px 0;
       color: rgba(184,134,59,0.4);
       font-size: 1rem;
       font-family: var(--font-mono);
       letter-spacing: -0.05em;
+    }
+    @media (min-width: 600px) {
+      .fp-sep {
+        padding-top: 22px;
+      }
     }
     .fp-match {
       font-size: 0.7rem;
@@ -642,12 +732,6 @@
       display: flex;
       align-items: center;
       gap: 5px;
-    }
-
-    @media (max-width: 640px) {
-      .chat-layout { grid-template-columns: 1fr; }
-      .sidebar { display: none; }
-      .fp-grid { flex-direction: column; }
     }
   </style>
 </head>
@@ -674,7 +758,7 @@
           </g>
         </svg>
       </div>
-      Matrix Encryption
+      <span class="navbar-brand-text">Matrix Encryption</span>
     </div>
     <div class="navbar-links">
       <span id="socket-status" class="badge badge-red">● Connecting…</span>
@@ -715,10 +799,12 @@
       </div>
     </aside>
 
-    <!-- Chat main -->
     <div class="chat-main">
       <div class="chat-header" id="chat-header">
         <div class="flex items-center gap-2">
+          <button id="sidebar-toggle-btn" class="btn btn-ghost btn-header mobile-only-btn" style="padding: 4px 8px; font-size: 0.8rem; min-height: 32px;" title="Toggle sessions sidebar">
+            ☰ Menu
+          </button>
           <strong id="chat-header-title">Global Room</strong>
         </div>
         <div class="chat-header-actions">
@@ -770,8 +856,6 @@
         <button id="send-btn" class="btn btn-primary" aria-label="Send message">Send ↑</button>
       </div>
     </div>
-  </div>
-
   </div>
 
   <div id="toast-container"></div>

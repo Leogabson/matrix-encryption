@@ -31,6 +31,19 @@
   --radius-sm: 5px;
   --transition: 0.18s ease;
 
+  /* Core mobile-first tokens */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --touch-target-size: 44px;
+  --header-height: 58px;
+  --sidebar-width: 280px;
+  --modal-width: 440px;
+
   /* Legacy aliases (used by old class names preserved in HTML) */
   --surface:     var(--color-surface);
   --surface-2:   #E4DCC8;
@@ -117,6 +130,7 @@ code, pre, .mono { font-family: var(--font-mono); }
   justify-content: center;
   gap: 7px;
   padding: 10px 22px;
+  min-height: var(--touch-target-size); /* Minimum 44px for touch targets */
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   font-family: var(--font-body);
@@ -169,6 +183,7 @@ code, pre, .mono { font-family: var(--font-mono); }
   font-family: var(--font-body);
   font-size: 0.875rem;
   padding: 10px 13px;
+  min-height: var(--touch-target-size); /* Minimum 44px for touch targets */
   transition: border-color var(--transition), box-shadow var(--transition);
   outline: none;
 }
@@ -211,8 +226,8 @@ textarea.input { resize: vertical; min-height: 80px; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  height: 58px;
+  padding: 0 var(--spacing-md); /* 16px padding on mobile by default */
+  height: var(--header-height);
   background: rgba(20,24,29,0.92);
   border-bottom: 1px solid var(--color-line);
   backdrop-filter: blur(10px);
@@ -228,8 +243,16 @@ textarea.input { resize: vertical; min-height: 80px; }
   color: var(--color-text-inv);
   display: flex;
   align-items: center;
-  gap: 10px;
   letter-spacing: -0.01em;
+}
+
+.navbar-brand-text {
+  display: none;
+}
+@media (min-width: 480px) {
+  .navbar-brand-text {
+    display: inline;
+  }
 }
 
 /* Cipher-wheel logo icon wrapper */
@@ -317,8 +340,32 @@ textarea.input { resize: vertical; min-height: 80px; }
 }
 
 /* ── Responsive ───────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .navbar { padding: 0 16px; }
+@media (min-width: 900px) {
+  .navbar { padding: 0 var(--spacing-lg); }
+}
+
+/* ── Prefers Reduced Motion ───────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    background-attachment: initial !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+  .boot-overlay, .granted-overlay {
+    display: none !important;
+  }
+  .login-card {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .terminal-cursor {
+    animation: none !important;
+  }
 }
 
 /* =========================================================

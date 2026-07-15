@@ -480,6 +480,12 @@ function selectChannel(selectedId) {
   _activeSessionId = selectedId;
   const list = $('session-list');
 
+  // Close mobile sidebar drawer on session selection
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+  }
+
   // Sync sidebar active styling
   list.querySelectorAll('.session-item').forEach(item => {
     const itemSid = item.dataset.sessionId;
@@ -839,6 +845,26 @@ document.addEventListener('DOMContentLoaded', () => {
   $('fp-close-btn').addEventListener('click', () => {
     $('fingerprint-panel').style.display = 'none';
   });
+
+  // Mobile Sidebar Toggle Wire-up
+  const sidebar = document.querySelector('.sidebar');
+  const toggleBtn = $('sidebar-toggle-btn');
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sidebar.classList.toggle('open');
+    });
+  }
+
+  // Clicking chat-main closes mobile sidebar if open
+  const chatMain = document.querySelector('.chat-main');
+  if (chatMain && sidebar) {
+    chatMain.addEventListener('click', () => {
+      if (sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+      }
+    });
+  }
 
   /* ── Load history ──────────────────────────────────── */
   try {

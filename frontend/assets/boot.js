@@ -27,6 +27,18 @@
       return;
     }
 
+    // Bypass animation if OS prefers reduced motion
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      bootOverlay.style.display = "none";
+      if (loginCard) {
+        loginCard.style.opacity = "1";
+        loginCard.style.transform = "scale(1)";
+      }
+      sessionStorage.setItem("boot_played", "true");
+      return;
+    }
+
     // Degrade gracefully if canvas not supported
     if (!supportsCanvas()) {
       bootOverlay.style.display = "none";
@@ -54,14 +66,23 @@
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
+    // Mobile layout optimization (fewer columns, skipped columns under 500px width)
+    const isMobile = window.innerWidth < 500;
+    const fontSize = isMobile ? 20 : 14;
+    const colStep = isMobile ? 2 : 1;
+
     // Characters definition
     const chars = "01ΣΔ⊕ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    const fontSize = 14;
     let columns = Math.floor(canvas.width / fontSize);
     let drops = [];
     let speeds = [];
 
     for (let i = 0; i < columns; i++) {
+      if (isMobile && i % colStep !== 0) {
+        drops[i] = null;
+        speeds[i] = null;
+        continue;
+      }
       drops[i] = Math.random() * -100;
       speeds[i] = 1 + Math.random() * 2; // varied fall speeds
     }
@@ -84,6 +105,7 @@
       ctx.font = fontSize + "px monospace";
 
       for (let i = 0; i < drops.length; i++) {
+        if (drops[i] === null) continue;
         const x = i * fontSize;
         const speed = speeds[i];
         
@@ -130,6 +152,7 @@
       const density = Math.min(elapsed / 1500, 1);
 
       for (let i = 0; i < drops.length; i++) {
+        if (drops[i] === null) continue;
         const x = i * fontSize;
         
         // Draw trailing characters inside the silhouette with brass color
@@ -143,8 +166,8 @@
           const text = chars[Math.floor(Math.random() * chars.length)];
           ctx.fillText(text, x, y);
           
-          // Extra noise character for density inside figure
-          if (Math.random() < density * 0.15) {
+          // Extra noise character for density inside figure - skip on mobile
+          if (!isMobile && Math.random() < density * 0.15) {
             ctx.fillText(chars[Math.floor(Math.random() * chars.length)], x, y - 4);
           }
         }
@@ -220,6 +243,13 @@
   window.triggerAccessGrantedReveal = function (callback) {
     const overlay = document.getElementById("granted-overlay");
     if (!overlay) {
+      if (callback) callback();
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      overlay.style.display = "none";
       if (callback) callback();
       return;
     }
