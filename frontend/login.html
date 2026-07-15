@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/style.css" />
+  <script src="/assets/keystore.js" defer></script>
   <script src="/assets/boot.js" defer></script>
   <style>
     .login-wrap {
@@ -303,10 +304,37 @@
           return;
         }
 
-        // Store token + AES key for the session
-        sessionStorage.setItem('token',   data.token);
-        sessionStorage.setItem('user_id', data.user_id);
+        // ── Store session credentials ────────────────────────────
+        sessionStorage.setItem('token',    data.token);
+        sessionStorage.setItem('user_id',  data.user_id);
+        sessionStorage.setItem('username', data.username ?? username);
         if (data.aes_key) sessionStorage.setItem('aes_key', data.aes_key);
+
+        // ── ECDH keypair: generate or reuse, then upload if needed ──
+        try {
+          if (window.Keystore) {
+            await window.Keystore.init();
+          }
+          const { publicKey, isNew } = await window.Keystore.getOrCreateKeypair(username);
+
+          // Upload the public key when:
+          //  (a) we just generated a brand-new keypair, OR
+          //  (b) the server doesn't have one yet (e.g. registered before this feature)
+          if (isNew || !data.has_public_key) {
+            const jwk = await window.Keystore.getPublicKeyJwk(publicKey);
+            await fetch('/api/auth/set_public_key', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${data.token}`,
+              },
+              body: JSON.stringify({ public_key: JSON.stringify(jwk) }),
+            });
+          }
+        } catch (kErr) {
+          // Non-fatal: keypair issues should not block login
+          console.warn('[keystore] keypair setup failed:', kErr);
+        }
 
         if (window.triggerAccessGrantedReveal) {
           window.triggerAccessGrantedReveal(() => {

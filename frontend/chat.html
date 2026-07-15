@@ -237,7 +237,131 @@
       opacity: 0.85;
     }
 
+    /* ── Private-session message extras ── */
+    .msg-private-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.62rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+      background: rgba(184,134,59,0.13);
+      border: 1px solid rgba(184,134,59,0.35);
+      color: var(--color-accent);
+      padding: 1px 7px;
+      border-radius: 99px;
+      margin-bottom: 2px;
+      width: fit-content;
+    }
 
+    .hill-matrix-btn {
+      background: transparent;
+      border: none;
+      color: var(--color-accent);
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      padding: 1px 5px;
+      border-radius: 3px;
+      opacity: 0.7;
+      transition: opacity var(--transition);
+    }
+    .hill-matrix-btn:hover { opacity: 1; }
+
+    .hill-matrix-drawer {
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 6px;
+      padding: 8px 10px;
+      background: rgba(0,0,0,0.12);
+      border: 1px dashed rgba(184,134,59,0.25);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      color: var(--color-accent);
+    }
+    .hill-matrix-drawer .hm-label {
+      font-size: 0.56rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      opacity: 0.6;
+      margin-bottom: 4px;
+    }
+    .hill-matrix-row {
+      display: flex;
+      gap: 10px;
+    }
+    .hill-matrix-row span {
+      min-width: 24px;
+      text-align: right;
+    }
+
+    /* ── Locked-message bubble (not for this user) ── */
+    .msg-bubble.msg-locked {
+      background: rgba(20,20,26,0.7);
+      border-color: rgba(120,60,60,0.35);
+      opacity: 0.88;
+    }
+    .locked-header {
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      color: #a06060;
+      font-weight: 500;
+    }
+    .locked-ciphertext {
+      font-family: var(--font-mono);
+      font-size: 0.61rem;
+      color: rgba(184,134,59,0.45);
+      word-break: break-all;
+      line-height: 1.5;
+      margin-top: 4px;
+      max-height: 60px;
+      overflow: hidden;
+      mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+    }
+
+    /* ── Sidebar session picker ── */
+    .session-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .session-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 7px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,255,255,0.06);
+      cursor: pointer;
+      font-size: 0.73rem;
+      color: var(--color-text-inv-muted);
+      font-family: var(--font-body);
+      transition: all var(--transition);
+      background: transparent;
+    }
+    .session-item:hover {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(184,134,59,0.3);
+    }
+    .session-item.active {
+      background: rgba(184,134,59,0.10);
+      border-color: rgba(184,134,59,0.45);
+      color: var(--color-accent);
+    }
+    .session-item-label {
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .session-item-sub {
+      font-size: 0.63rem;
+      opacity: 0.6;
+      font-family: var(--font-mono);
+    }
     /* ── Input bar ── */
     .chat-input-bar {
       padding: 13px 20px;
@@ -263,9 +387,267 @@
     .chat-input-bar .input:focus { border-color: var(--color-accent); }
 
     /* ── Responsive ── */
+    /* ── User-picker modal ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.18s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal-box {
+      background: #1A1F26;
+      border: 1px solid rgba(184,134,59,0.35);
+      border-radius: var(--radius);
+      width: min(440px, 92vw);
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.8);
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(18px); opacity:0; } to { transform: none; opacity:1; } }
+
+    .modal-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--color-line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--color-text-inv);
+    }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--color-text-inv-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color var(--transition);
+    }
+    .modal-close:hover { color: var(--color-text-inv); }
+
+    .modal-subtitle {
+      padding: 10px 20px 6px;
+      font-size: 0.75rem;
+      color: var(--color-text-inv-muted);
+      font-family: var(--font-body);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .modal-body {
+      overflow-y: auto;
+      padding: 6px 12px 14px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,255,255,0.05);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .user-row:hover {
+      background: rgba(184,134,59,0.07);
+      border-color: rgba(184,134,59,0.35);
+    }
+    .user-row.no-key {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .user-row.no-key:hover {
+      background: transparent;
+      border-color: rgba(255,255,255,0.05);
+    }
+    .user-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(184,134,59,0.15);
+      border: 1px solid rgba(184,134,59,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      color: var(--color-accent);
+      flex-shrink: 0;
+    }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name {
+      font-size: 0.88rem;
+      color: var(--color-text-inv);
+      font-family: var(--font-body);
+      font-weight: 500;
+    }
+    .user-key-badge {
+      font-size: 0.62rem;
+      font-family: var(--font-mono);
+      color: var(--color-success);
+      letter-spacing: 0.04em;
+    }
+    .user-key-missing {
+      font-size: 0.62rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-inv-muted);
+    }
+    .user-row-spinner {
+      display: none;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(184,134,59,0.3);
+      border-top-color: var(--color-accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    .user-row.loading .user-row-spinner { display: block; }
+    .user-row.loading .user-row-arrow { display: none; }
+    .user-row-arrow {
+      color: var(--color-text-inv-muted);
+      font-size: 0.8rem;
+      transition: color var(--transition);
+    }
+    .user-row:hover .user-row-arrow { color: var(--color-accent); }
+
+    .modal-empty {
+      text-align: center;
+      padding: 28px 20px;
+      color: var(--color-text-inv-muted);
+      font-size: 0.82rem;
+      font-family: var(--font-body);
+    }
+
+    /* ── Session-view header extras ── */
+    .chat-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-header {
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      border-radius: var(--radius-sm);
+    }
+    .btn-back {
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      color: var(--color-text-inv-muted);
+      border-color: rgba(255,255,255,0.1);
+    }
+    .btn-back:hover { color: var(--color-text-inv); }
+
+    /* ── Fingerprint verification panel ── */
+    #fingerprint-panel {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--color-line);
+      background: rgba(20,20,26,0.6);
+      border-left: 3px solid var(--color-accent);
+    }
+    .fp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .fp-title {
+      font-size: 0.78rem;
+      font-family: var(--font-body);
+      font-weight: 600;
+      color: var(--color-text-inv);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fp-subtitle {
+      font-size: 0.68rem;
+      color: var(--color-text-inv-muted);
+      font-family: var(--font-body);
+      margin-top: 1px;
+    }
+    .fp-grid {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .fp-matrix-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .fp-matrix-label {
+      font-size: 0.6rem;
+      font-family: var(--font-body);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-inv-muted);
+    }
+    .fp-matrix {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      background: rgba(184,134,59,0.05);
+      border: 1px solid rgba(184,134,59,0.2);
+      border-radius: 4px;
+      padding: 8px 12px;
+    }
+    .fp-matrix-row {
+      display: flex;
+      gap: 14px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--color-accent);
+    }
+    .fp-matrix-row span {
+      min-width: 26px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .fp-sep {
+      display: flex;
+      align-items: center;
+      padding-top: 22px;
+      color: rgba(184,134,59,0.4);
+      font-size: 1rem;
+      font-family: var(--font-mono);
+      letter-spacing: -0.05em;
+    }
+    .fp-match {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      color: var(--color-success);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
     @media (max-width: 640px) {
       .chat-layout { grid-template-columns: 1fr; }
       .sidebar { display: none; }
+      .fp-grid { flex-direction: column; }
     }
   </style>
 </head>
@@ -322,21 +704,55 @@
       </div>
 
       <div class="sidebar-section">
-        <h3>Security Note</h3>
-        <p class="sidebar-note">
-          All messages are encrypted in your browser before transmission.
-          The server stores only AES-GCM ciphertext and cannot read plaintext.
-        </p>
+        <h3>Sessions</h3>
+        <div class="session-list" id="session-list">
+          <!-- populated by chat.js buildSessionPicker() -->
+          <div class="session-item active" id="session-global" data-session-id="null">
+            <span class="session-item-label">🌐 Global Room</span>
+            <span class="session-item-sub">shared AES key · everyone</span>
+          </div>
+        </div>
       </div>
     </aside>
 
     <!-- Chat main -->
     <div class="chat-main">
-      <div class="chat-header">
+      <div class="chat-header" id="chat-header">
         <div class="flex items-center gap-2">
-          <strong>Global Room</strong>
+          <strong id="chat-header-title">Global Room</strong>
         </div>
-        <span class="secured-badge">AES-GCM secured</span>
+        <div class="chat-header-actions">
+          <span class="secured-badge" id="secured-badge">AES-GCM secured</span>
+          <button id="verify-keys-btn" class="btn btn-ghost btn-header" style="display:none;"
+            title="Verify fingerprint matrices side-by-side">
+            ⊞ Verify Keys
+          </button>
+          <button id="back-global-btn" class="btn btn-ghost btn-header btn-back" style="display:none;"
+            title="Return to public Global Room">
+            ← Back to Global
+          </button>
+          <button id="new-session-btn" class="btn btn-ghost btn-header"
+            title="Start an end-to-end encrypted private session">
+            🔐 Start Secure Session
+          </button>
+        </div>
+      </div>
+
+      <!-- Fingerprint verification panel (hidden until session active) -->
+      <div id="fingerprint-panel">
+        <div class="fp-header">
+          <div>
+            <div class="fp-title">🛡 Key Fingerprint Verification</div>
+            <div class="fp-subtitle">
+              Both participants should see the same matrix. Verify out-of-band (voice, in person).
+            </div>
+          </div>
+          <button id="fp-close-btn" class="modal-close" title="Hide fingerprint panel">✕</button>
+        </div>
+        <div class="fp-grid" id="fp-grid">
+          <!-- populated by openSessionView() -->
+        </div>
+        <div class="fp-match">✓ Matrices match · Your conversation is end-to-end encrypted</div>
       </div>
 
       <div id="msg-list" role="log" aria-live="polite" aria-label="Chat messages">
@@ -356,7 +772,24 @@
     </div>
   </div>
 
+  </div>
+
   <div id="toast-container"></div>
+
+  <!-- User Picker Modal (shown by chat.js) -->
+  <div id="user-picker-modal" class="modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-label="Start Secure Conversation">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">🔐 Start Secure Conversation</span>
+        <button class="modal-close" id="picker-close-btn" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-subtitle">Choose a participant</div>
+      <div class="modal-body" id="picker-user-list">
+        <!-- Populated dynamically -->
+        <div class="modal-empty">Loading users…</div>
+      </div>
+    </div>
+  </div>
 
   <script>
     // Show truncated AES key in sidebar
@@ -382,6 +815,8 @@
     };
   </script>
 
+  <script src="/assets/keystore.js"></script>
+  <script src="/assets/session-crypto.js"></script>
   <script src="/assets/chat.js"></script>
 </body>
 </html>

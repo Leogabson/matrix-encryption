@@ -53,11 +53,14 @@ def create_app() -> Flask:
     from routes_auth import auth_bp
     from routes_chat import chat_bp, register_socketio_events
     from routes_cipherlab import cipherlab_bp
+    from routes_session import session_bp, init_session_routes
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(cipherlab_bp)
+    app.register_blueprint(session_bp)
     register_socketio_events(socketio)
+    init_session_routes(socketio)
 
     # ------- database init ---------------------------------------------------
     with app.app_context():

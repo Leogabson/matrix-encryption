@@ -61,6 +61,17 @@ matrix-encryption/
 
 ---
 
+## 🔒 Security Properties
+
+- **Confidentiality**: Active conversations use dedicated AES-GCM session keys, generated fresh per session. Users without the matching key see locked bubbles with ciphertext only — they cannot derive plaintext without the session's AES key.
+- **Server Blindness**: The database persists only wrapped (encrypted) session key blobs and public keys. The server never holds a participant's private key, so it cannot unwrap a session key on its own. Note: this protects against a passive database read (e.g. a DB leak) — it does not protect against a compromised server actively substituting public keys during key exchange (see "Public Key Authenticity" below).
+- **Session Key Handling**: The raw AES session key exists only transiently in server memory during the wrap step; the reference is dropped immediately after (`del`) and the key is never logged or written to disk. This reduces exposure window but is not a secure-erase guarantee — Python's `del` removes a reference, not the underlying memory contents, so the key may persist briefly in memory, swap, or a crash dump. Treat this as risk reduction, not a hard guarantee.
+- **Forward Secrecy**: Not implemented. Each conversation uses one static session key for its lifetime rather than a per-message ratchet (as in Signal's Double Ratchet), so compromising one session key exposes that session's full message history. Real forward secrecy would require per-message key rotation — noted here as a possible future improvement, not a current property of the system.
+- **At-Rest Storage in IndexedDB**: Session keys are encrypted at rest using a wrapping key derived from the user's own private key (self-ECDH). This guards against casual inspection of stored data, but anyone with access to read IndexedDB already has the private key sitting alongside it and can derive the same wrapping key — so this is obfuscation against casual browsing of storage, not protection against an attacker who already has local storage access.
+- **Public Key Authenticity**: Not independently verified. The server delivers public keys during session setup; nothing currently prevents a compromised server from substituting a different key and executing a man-in-the-middle attack. The Hill Matrix fingerprint panel exists specifically to catch this — but only works if participants compare it **out of band** (e.g. read aloud on a call, compared in person or via a separate channel), not by both trusting what the same app displays on-screen. The UI should prompt users to verify this way explicitly, or the fingerprint check provides no real protection against a malicious server.
+
+---
+
 ## 🚀 Setup & Installation
 
 ### 1. Configure the Virtual Environment
