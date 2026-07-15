@@ -662,6 +662,15 @@ async function openUserPicker(token, username) {
           row.style.pointerEvents = 'none';
 
           try {
+            // Gated by the shared initialization complete signal
+            if (window.cryptoInitPromise) {
+              await window.cryptoInitPromise;
+            }
+
+            if (!window.SessionCrypto) {
+              throw new Error('Cryptography module (SessionCrypto) not loaded. Please refresh the page.');
+            }
+
             const startRes = await fetch('/api/session/start', {
               method: 'POST',
               headers: {
@@ -684,10 +693,6 @@ async function openUserPicker(token, username) {
               is_initiator:            true,
               created_at:              data.created_at,
             };
-
-            if (!window.SessionCrypto) {
-              throw new Error('Cryptography module (SessionCrypto) not loaded. Please refresh the page.');
-            }
 
             await window.SessionCrypto.unwrapAndStore(
               data.wrapped_key,
@@ -731,7 +736,7 @@ function showChatLoading(isLoading) {
 }
 
 /* ── Main init ───────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   const token    = sessionStorage.getItem('token');
   const userId   = parseInt(sessionStorage.getItem('user_id') || '0', 10);
   const username = sessionStorage.getItem('username') || '';
@@ -743,13 +748,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   showChatLoading(true);
 
   if (keyB64) {
-    await importRawKey(keyB64);
+    importRawKey(keyB64);
   } else {
     toast('No AES key found – messages will not be decryptable', 'error');
   }
 
-  // ── Sequenced database and session recovery init ─────────────────
-  try {
+  // ── Create exactly ONE shared "initialization complete" signal promise ────
+  window.cryptoInitPromise = (async () => {
     if (window.Keystore) {
       await window.Keystore.init();
     }
@@ -758,8 +763,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (username) {
         // Load local keys from IndexedDB
         await window.SessionCrypto.loadPersistedSessions(username);
+      }
+    }
+  })();
 
-        // Fetch pending sessions and unwrap sequentially
+  // ── Recover pending sessions after shared init resolves ───────────────────
+  window.cryptoInitPromise.then(async () => {
+    try {
+      if (window.SessionCrypto && username) {
         const pendingRes = await fetch('/api/session/pending', {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -786,17 +797,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
       }
+    } catch (err) {
+      console.error('[chat] Pending session recovery failed:', err);
+    } finally {
+      // 2. Hide loading state once databases are fully open and keys recovered
+      showChatLoading(false);
+      buildSessionPicker();
     }
-  } catch (initErr) {
+  }).catch((initErr) => {
     console.error('[chat] Secure initialization failed:', initErr);
     toast(`Security setup failed: ${initErr.message}`, 'error');
-  } finally {
-    // 2. Hide loading state once databases are fully open and keys recovered
     showChatLoading(false);
-  }
-
-  // Build initial session list in sidebar
-  buildSessionPicker();
+    buildSessionPicker();
+  });
 
   const msgList  = $('msg-list');
   const msgInput = $('msg-input');
@@ -829,18 +842,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   /* ── Load history ──────────────────────────────────── */
   try {
-    const res = await fetch('/api/chat/history', {
+    fetch('/api/chat/history', {
       headers: { Authorization: `Bearer ${token}` },
+    }).then(res => {
+      if (res.ok) {
+        return res.json();
+      }
+    }).then(msgs => {
+      if (msgs) {
+        msgs.forEach(m => renderMessage(msgList, m, m.user_id === userId));
+        applyMessageFilter(null);
+      }
     });
-    if (res.ok) {
-      const msgs = await res.json();
-      msgs.forEach(m => renderMessage(msgList, m, m.user_id === userId));
-      // Filter the loaded messages initially to show only Global Room
-      applyMessageFilter(null);
-    }
   } catch { /* ignore */ }
 
-  /* ── Socket.IO connection (Connected AFTER full initialization) ──── */
+  /* ── Socket.IO connection (Connected immediately, but events await init) ── */
   const socket = io({ auth: { token } });
 
   socket.on('connect', () => {
@@ -878,8 +894,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   socket.on('new_session', async (data) => {
     const sessionId = data.session_id;
 
-    if (window.SessionCrypto && username) {
-      try {
+    try {
+      // Gated by the shared initialization complete signal
+      if (window.cryptoInitPromise) {
+        await window.cryptoInitPromise;
+      }
+
+      if (window.SessionCrypto && username) {
         const meta = {
           other_username:          data.initiator_username,
           initiator_username:      data.initiator_username,
@@ -899,12 +920,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           `🔐 New session #${sessionId} from ${data.initiator_username} — key unwrapped`,
           'success'
         );
-      } catch (err) {
-        console.error('[chat] new_session unwrap failed:', err);
-        toast(`Failed to unwrap session #${sessionId} key`, 'error');
+      } else {
+        toast(`New session #${sessionId} from ${data.initiator_username}`, 'info');
       }
-    } else {
-      toast(`New session #${sessionId} from ${data.initiator_username}`, 'info');
+    } catch (err) {
+      console.error('[chat] new_session unwrap failed:', err);
+      toast(`Failed to unwrap session #${sessionId} key`, 'error');
     }
   });
 
