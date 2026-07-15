@@ -1,3 +1,4 @@
+(() => {
 /**
  * session-crypto.js — Client-side ECIES unwrapping and session key management.
  *
@@ -62,7 +63,7 @@ function _openSessionDB() {
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains(SESSION_IDB_STORE)) {
-        db.createObjectStore(SESSION_IDB_STORE, { keyPath: 'id' });
+        db.createObjectStore(SESSION_IDB_STORE, { keyPath: 'sessionId' });
       }
     };
 
@@ -71,187 +72,197 @@ function _openSessionDB() {
   });
 }
 
-async function _idbPut(record) {
-  const db = await _openSessionDB();
-  return new Promise((resolve, reject) => {
-    const tx  = db.transaction(SESSION_IDB_STORE, 'readwrite');
-    const req = tx.objectStore(SESSION_IDB_STORE).put(record);
-    req.onsuccess = () => resolve();
-    req.onerror   = (e) => reject(e.target.error);
-  });
-}
-
-async function _idbGetAll() {
-  const db = await _openSessionDB();
-  return new Promise((resolve, reject) => {
-    const tx  = db.transaction(SESSION_IDB_STORE, 'readonly');
-    const req = tx.objectStore(SESSION_IDB_STORE).getAll();
-    req.onsuccess = (e) => resolve(e.target.result ?? []);
-    req.onerror   = (e) => reject(e.target.error);
-  });
-}
-
-/* ── HKDF helper ──────────────────────────────────────── */
-
-/**
- * Derive a 256-bit AES-GCM key from raw bytes via HKDF-SHA-256.
- *
- * @param {ArrayBuffer} keyMaterial  Raw bytes (e.g. ECDH shared secret).
- * @param {string}      infoString   Application-specific context string.
- * @returns {Promise<CryptoKey>}     AES-GCM 256-bit key (non-extractable).
- */
-async function _hkdfDerive(keyMaterial, infoString) {
-  const hkdfKey = await crypto.subtle.importKey(
-    'raw', keyMaterial, 'HKDF', false, ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    {
-      name:   'HKDF',
-      hash:   'SHA-256',
-      salt:   new Uint8Array(32),           // zero salt (matches Python's salt=None → zeros)
-      info:   new TextEncoder().encode(infoString),
-    },
-    hkdfKey,
-    { name: 'AES-GCM', length: 256 },
-    false,   // not extractable
-    ['encrypt', 'decrypt']
-  );
-}
-
-/* ── Storage wrapping key ─────────────────────────────── */
-
-// Cached per username so we only derive once per page load
-const _storageKeyCache = new Map(); // username → CryptoKey (AES-GCM)
-
-/**
- * Derive the deterministic storage wrapping key for *username*.
- *
- * Uses self-ECDH: ECDH(my_priv, my_pub) → shared point → HKDF → AES key.
- * The result is unique to this device's keypair but fully reproducible.
- *
- * @param {string} username
- * @returns {Promise<CryptoKey>}
- */
-async function _getStorageKey(username) {
-  if (_storageKeyCache.has(username)) return _storageKeyCache.get(username);
-
-  // Load the user's own keypair from the ecdh-keystore IDB
-  const { privateKey, publicKey } = await window.Keystore.getOrCreateKeypair(username);
-
-  // Self-ECDH: treat own public key as the "other party"
-  const selfSecret = await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: publicKey },
-    privateKey,
-    256
-  );
-
-  const storageKey = await _hkdfDerive(selfSecret, STORAGE_HKDF_INFO);
-  _storageKeyCache.set(username, storageKey);
-  return storageKey;
-}
-
-/* ── Session key persistence ──────────────────────────── */
-
-/**
- * Encrypt and store a session CryptoKey in IndexedDB.
- *
- * @param {number}    sessionId
- * @param {CryptoKey} sessionCryptoKey  Must be AES-GCM, extractable.
- * @param {string}    username
- */
-async function _persistSessionKey(sessionId, sessionCryptoKey, username) {
-  try {
-    const storageKey = await _getStorageKey(username);
-
-    // Export raw session key bytes (requires extractable: true on import)
-    const rawKeyBytes = await crypto.subtle.exportKey('raw', sessionCryptoKey);
-
-    // Encrypt with the storage wrapping key
-    const iv             = crypto.getRandomValues(new Uint8Array(12));
-    const encWithTag     = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      storageKey,
-      rawKeyBytes
-    );
-
-    await _idbPut({
-      id:        `${username}:${sessionId}`,
-      sessionId,
-      username,
-      encKeyB64: _bytesToB64(encWithTag),
-      ivB64:     _bytesToB64(iv),
+function _idbPut(record) {
+  return _openSessionDB().then(db => {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(SESSION_IDB_STORE, 'readwrite');
+      const req = tx.objectStore(SESSION_IDB_STORE).put(record);
+      req.onsuccess = () => resolve();
+      req.onerror = (e) => reject(e.target.error);
     });
-  } catch (err) {
-    console.warn('[session-crypto] Failed to persist session key:', err);
-  }
+  });
 }
 
-/**
- * Decrypt and return a session CryptoKey from an IDB record.
- *
- * @param {{ encKeyB64: string, ivB64: string }} record
- * @param {CryptoKey} storageKey
- * @returns {Promise<CryptoKey>}  AES-GCM, extractable (for future re-persistence).
- */
-async function _decryptStoredKey(record, storageKey) {
-  const encBytes = _b64ToBytes(record.encKeyB64);
-  const iv       = _b64ToBytes(record.ivB64);
+function _idbGetAll() {
+  return _openSessionDB().then(db => {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(SESSION_IDB_STORE, 'readonly');
+      const req = tx.objectStore(SESSION_IDB_STORE).getAll();
+      req.onsuccess = (e) => resolve(e.target.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  });
+}
 
-  const rawKeyBytes = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
-    storageKey,
-    encBytes
+/* ── HKDF logic (Web Crypto API) ──────────────────────── */
+
+async function _hkdfDerive(sharedSecretKey, infoString) {
+  const enc = new TextEncoder();
+  const info = enc.encode(infoString);
+  const salt = new Uint8Array(0); // empty salt, standard in ECIES
+
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt,
+      info,
+    },
+    sharedSecretKey,
+    256 // 32 bytes
   );
 
   return crypto.subtle.importKey(
-    'raw', rawKeyBytes,
+    'raw', derivedBits,
     { name: 'AES-GCM' },
-    true,                            // extractable: needed for future re-persistence
+    false,
     ['encrypt', 'decrypt']
   );
 }
 
-/* ── ECIES unwrap ─────────────────────────────────────── */
+/* ── Self-ECDH key derivation (for storage encryption) ── */
 
-/**
- * Import an ECDH P-256 public key from a JWK object.
- *
- * @param {Object} jwk
- * @returns {Promise<CryptoKey>}
- */
-async function _importEphPub(jwk) {
+/** Derive a unique local wrapping key using ECDH(my_private, my_public). */
+async function _getStorageKey(username) {
+  // Load private and public keys
+  const [priv, pub] = await Promise.all([
+    window.Keystore.getPrivateKey(username),
+    window.Keystore.getOrCreateKeypair(username).then(res => res.publicKey)
+  ]);
+
+  if (!priv || !pub) {
+    throw new Error('User ECDH keys not available for storage encryption');
+  }
+
+  // Derive bits using ECDH
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'ECDH',
+      public: pub,
+    },
+    priv,
+    256
+  );
+
+  const sharedSecret = await crypto.subtle.importKey(
+    'raw', derivedBits,
+    { name: 'HKDF' },
+    false,
+    ['deriveKey', 'deriveBits']
+  );
+
+  // Derive final AES storage wrapping key
+  return _hkdfDerive(sharedSecret, STORAGE_HKDF_INFO);
+}
+
+/* ── Encrypted IndexedDB persistence ──────────────────── */
+
+async function _encryptStoredKey(sessionKey, storageKey) {
+  const rawKeyBytes = await crypto.subtle.exportKey('raw', sessionKey);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    storageKey,
+    rawKeyBytes
+  );
+
+  const ctBytes = new Uint8Array(ciphertext);
+  return {
+    ciphertext_b64: _bytesToB64(ctBytes.slice(0, -16)),
+    tag_b64:        _bytesToB64(ctBytes.slice(-16)),
+    iv_b64:         _bytesToB64(iv),
+  };
+}
+
+async function _decryptStoredKey(record, storageKey) {
+  const iv = _b64ToBytes(record.iv_b64);
+  const ct = _b64ToBytes(record.ciphertext_b64);
+  const tag = _b64ToBytes(record.tag_b64);
+
+  const combined = new Uint8Array(ct.length + tag.length);
+  combined.set(ct, 0);
+  combined.set(tag, ct.length);
+
+  const rawBytes = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    storageKey,
+    combined
+  );
+
+  return crypto.subtle.importKey(
+    'raw', rawBytes,
+    { name: 'AES-GCM' },
+    true,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function _persistSessionKey(sessionId, sessionKey, username) {
+  try {
+    const storageKey = await _getStorageKey(username);
+    const encResult  = await _encryptStoredKey(sessionKey, storageKey);
+
+    const record = {
+      sessionId,
+      username,
+      ciphertext_b64: encResult.ciphertext_b64,
+      tag_b64:        encResult.tag_b64,
+      iv_b64:         encResult.iv_b64,
+      meta:           _sessionMeta.get(sessionId) || null,
+    };
+
+    await _idbPut(record);
+  } catch (err) {
+    console.warn(`[session-crypto] Failed to persist session key for #${sessionId}:`, err);
+  }
+}
+
+/* ── Ephemeral ECIES unwrapping ───────────────────────── */
+
+/** Import raw ephemeral public key JWK */
+async function _importPublicJwk(jwk) {
   return crypto.subtle.importKey('jwk', jwk, ECDH_PARAMS, false, []);
 }
 
 /**
- * Unwrap an ECIES-wrapped session key blob for *username*.
+ * Unwrap a session key blob using the user's private key.
  *
- * Steps mirror the Python wrap_key() in crypto/ecies.py exactly.
- *
- * @param {{ eph_pub_jwk: Object, ciphertext_b64: string, iv_b64: string, tag_b64: string }} wrappedBlob
+ * @param {{ eph_pub_jwk, ciphertext_b64, iv_b64, tag_b64 }} wrappedBlob
  * @param {string} username
- * @returns {Promise<CryptoKey>}  AES-GCM CryptoKey ready for encrypt/decrypt.
+ * @returns {Promise<CryptoKey>} Unwrapped AES-GCM session key
  */
 async function unwrapSessionKey(wrappedBlob, username) {
   if (!window.Keystore) throw new Error('[session-crypto] Keystore not loaded');
 
   // 1. Load user's private key from ecdh-keystore IDB
-  const { privateKey } = await window.Keystore.getOrCreateKeypair(username);
+  const privateKey = await window.Keystore.getPrivateKey(username);
+  if (!privateKey) throw new Error('[session-crypto] User ECDH private key not found');
 
-  // 2. Import the ephemeral public key the server generated for this wrap
-  const ephPub = await _importEphPub(wrappedBlob.eph_pub_jwk);
+  // 2. Import ephemeral public key
+  const ephemeralPublic = await _importPublicJwk(wrappedBlob.eph_pub_jwk);
 
-  // 3. ECDH(user_priv, eph_pub) → raw shared secret bytes
-  const sharedSecret = await crypto.subtle.deriveBits(
-    { name: 'ECDH', public: ephPub },
+  // 3. ECDH key agreement -> raw shared secret bits
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'ECDH',
+      public: ephemeralPublic,
+    },
     privateKey,
-    256
+    256 // 32 bytes
   );
 
-  // 4. HKDF-SHA-256 → 256-bit AES-GCM wrapping key (same info as Python backend)
+  const sharedSecret = await crypto.subtle.importKey(
+    'raw', derivedBits,
+    { name: 'HKDF' },
+    false,
+    ['deriveKey', 'deriveBits']
+  );
+
+  // 4. HKDF-SHA-256 -> 256-bit AES-GCM wrapping key (same info as Python backend)
   const wrappingKey = await _hkdfDerive(sharedSecret, ECIES_HKDF_INFO);
 
-  // 5. AES-256-GCM decrypt the wrapped blob → raw session key bytes
+  // 5. AES-256-GCM decrypt the wrapped blob -> raw session key bytes
   const iv         = _b64ToBytes(wrappedBlob.iv_b64);
   const ciphertext = _b64ToBytes(wrappedBlob.ciphertext_b64);
   const tag        = _b64ToBytes(wrappedBlob.tag_b64);
@@ -267,18 +278,13 @@ async function unwrapSessionKey(wrappedBlob, username) {
     ctWithTag
   );
 
-  // 6. Import as AES-GCM CryptoKey (extractable so we can encrypt-then-store in IDB)
-  const sessionCryptoKey = await crypto.subtle.importKey(
+  return crypto.subtle.importKey(
     'raw', rawSessionKeyBytes,
     { name: 'AES-GCM' },
-    true,                           // extractable for IDB persistence
+    true,
     ['encrypt', 'decrypt']
   );
-
-  return sessionCryptoKey;
 }
-
-/* ── Public API ───────────────────────────────────────── */
 
 /* ── Public API ───────────────────────────────────────── */
 
@@ -306,12 +312,6 @@ function _checkInit() {
 
 /**
  * Unwrap a session key blob and store it in memory + IDB.
- *
- * @param {{ eph_pub_jwk, ciphertext_b64, iv_b64, tag_b64 }} wrappedBlob
- * @param {string} username
- * @param {number} sessionId
- * @param {Object} [meta]  Optional session metadata to store alongside the key.
- * @returns {Promise<CryptoKey>}
  */
 async function unwrapAndStore(wrappedBlob, username, sessionId, meta = null) {
   _checkInit();
@@ -324,10 +324,6 @@ async function unwrapAndStore(wrappedBlob, username, sessionId, meta = null) {
 
 /**
  * Retrieve a session CryptoKey from the in-memory Map.
- * Returns undefined if the session has not been unwrapped yet.
- *
- * @param {number} sessionId
- * @returns {CryptoKey | undefined}
  */
 function getSessionKey(sessionId) {
   _checkInit();
@@ -336,10 +332,6 @@ function getSessionKey(sessionId) {
 
 /**
  * Load all IDB-persisted session keys for *username* into the in-memory Map.
- * Call once on page load before any session operations.
- *
- * @param {string} username
- * @returns {Promise<void>}
  */
 async function loadPersistedSessions(username) {
   _checkInit();
@@ -353,14 +345,11 @@ async function loadPersistedSessions(username) {
       try {
         const key = await _decryptStoredKey(record, storageKey);
         _sessionKeys.set(record.sessionId, key);
+        if (record.meta) _sessionMeta.set(record.sessionId, record.meta);
       } catch (err) {
         console.warn(`[session-crypto] Could not restore session ${record.sessionId}:`, err);
       }
     }));
-
-    if (mine.length > 0) {
-      console.info(`[session-crypto] Restored ${mine.length} session key(s) from IDB`);
-    }
   } catch (err) {
     console.warn('[session-crypto] loadPersistedSessions failed:', err);
   }
@@ -368,10 +357,6 @@ async function loadPersistedSessions(username) {
 
 /**
  * Fetch all sessions from the server and unwrap any keys not already in memory.
- *
- * @param {string} token     Bearer token for the API.
- * @param {string} username  Logged-in username (for IDB key scoping).
- * @returns {Promise<void>}
  */
 async function fetchAndUnwrapPendingSessions(token, username) {
   _checkInit();
@@ -386,7 +371,7 @@ async function fetchAndUnwrapPendingSessions(token, username) {
 
     for (const s of sessions) {
       const sessionId = s.session_id;
-      if (_sessionKeys.has(sessionId)) continue; // already in memory from IDB
+      if (_sessionKeys.has(sessionId)) continue;
 
       const meta = {
         other_username:          s.other_username,
@@ -398,7 +383,6 @@ async function fetchAndUnwrapPendingSessions(token, username) {
 
       try {
         await unwrapAndStore(s.wrapped_key, username, sessionId, meta);
-        console.info(`[session-crypto] Unwrapped session ${sessionId} from server`);
       } catch (err) {
         console.warn(`[session-crypto] Failed to unwrap session ${sessionId}:`, err);
       }
@@ -415,12 +399,10 @@ window.SessionCrypto = {
   getSessionKey,
   loadPersistedSessions,
   fetchAndUnwrapPendingSessions,
-  /** Return stored metadata for a session, or undefined. */
   getSessionMeta: (sessionId) => {
     _checkInit();
     return _sessionMeta.get(sessionId);
   },
-  /** Return all unwrapped sessions as [{ sessionId, meta }], newest first. */
   listSessions: () => {
     _checkInit();
     return [..._sessionKeys.keys()]
@@ -428,3 +410,4 @@ window.SessionCrypto = {
       .map(id => ({ sessionId: id, meta: _sessionMeta.get(id) ?? null }));
   },
 };
+})();

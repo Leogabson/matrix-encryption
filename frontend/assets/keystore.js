@@ -1,3 +1,4 @@
+(() => {
 /**
  * keystore.js — Client-side ECDH P-256 keypair management.
  *
@@ -174,3 +175,4 @@ async function getPrivateKey(username) {
 
 // Make functions available globally (no module bundler in use)
 window.Keystore = { init, getOrCreateKeypair, getPublicKeyJwk, getPrivateKey };
+})();
