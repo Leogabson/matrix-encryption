@@ -685,6 +685,10 @@ async function openUserPicker(token, username) {
               created_at:              data.created_at,
             };
 
+            if (!window.SessionCrypto) {
+              throw new Error('Cryptography module (SessionCrypto) not loaded. Please refresh the page.');
+            }
+
             await window.SessionCrypto.unwrapAndStore(
               data.wrapped_key,
               username,
